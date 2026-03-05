@@ -12,11 +12,10 @@
             display: flex; 
             flex-direction: column; 
             align-items: center;
-            background: linear-gradient(135deg, #f5f7f5, #e8f5e9); /* Softened background to make the green lines pop */
+            background: linear-gradient(135deg, #f5f7f5, #e8f5e9);
             overflow: hidden; 
         }
 
-        /* NEW: TOP GREEN STRIP */
         .top-green-strip { 
             width: 100%;
             height: 48px; 
@@ -29,7 +28,6 @@
             font-weight: 500;
         }
 
-        /* Logo Header */
         .logo-header {
             width: 600px; 
             max-width: 90%;
@@ -38,7 +36,6 @@
             display: block;
         }
 
-        /* NEW: 0.5CM GREEN LINE BELOW LOGO */
         .logo-underline {
             width: 100%;
             height: 0.6cm;
@@ -46,7 +43,6 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
-        /* Form Centering Wrapper */
         .form-wrapper {
             flex: 1; 
             display: flex;
@@ -62,7 +58,7 @@
             box-shadow: 0 8px 30px rgba(0,0,0,0.15); 
             width: 380px; 
             text-align: center;
-            border-top: 4px solid #1aa63a; /* Matches the top strip */
+            border-top: 4px solid #1aa63a;
         }
 
         h2 { margin-bottom: 25px; color: #333; font-weight: 600; }
@@ -93,7 +89,6 @@
         }
         .loginbtn:hover { background-color: #148a30; transform: translateY(-1px); }
 
-        /* --- STABLE FOOTER --- */
         .footer-wrapper {
             width: 100%;
             height: 40px;
@@ -111,12 +106,27 @@
             color: white;
             font-size: 0.85rem;
         }
+
+        /* Dialogue Box Styles */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); display: flex; align-items: center;
+            justify-content: center; z-index: 9999;
+        }
+        .modal-box {
+            background: white; padding: 30px; border-radius: 12px;
+            width: 350px; text-align: center; box-shadow: 0 5px 25px rgba(0,0,0,0.4);
+            border-top: 5px solid #d9534f;
+        }
+        .modal-msg { margin-bottom: 25px; color: #333; font-size: 1.1rem; line-height: 1.4; }
+        .modal-btn { 
+            background: #1aa63a; color: white; border: none; padding: 10px 30px; 
+            border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 1rem;
+        }
     </style>
 </head>
 <body>
-    <div class="top-green-strip">
-      
-    </div>
+    <div class="top-green-strip"></div>
 
     <img alt="RCF LOGO" src="Images/logo.png" class="logo-header" />
 
@@ -124,6 +134,16 @@
 
     <div class="form-wrapper">
         <form id="form1" runat="server">
+            
+            <asp:Panel ID="pnlModal" runat="server" Visible="false" CssClass="modal-overlay">
+                <div class="modal-box">
+                    <div class="modal-msg">
+                        <asp:Label ID="lblModalMessage" runat="server"></asp:Label>
+                    </div>
+                    <asp:Button ID="btnCloseModal" runat="server" Text="OK" OnClick="btnCloseModal_Click" CssClass="modal-btn" CausesValidation="false" UseSubmitBehavior="false" />
+                </div>
+            </asp:Panel>
+
             <h2>Food Service Login</h2>
 
             <div class="uname">

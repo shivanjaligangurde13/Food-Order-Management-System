@@ -17,35 +17,34 @@ namespace WebApplication4
             set { ViewState["PageIndex"] = value; }
         }
 
-      protected void Page_Load(object sender, EventArgs e)
-{
-    if (Session["UserLoggedIn"] == null) 
-    {
-        Response.Redirect("Login.aspx");
-        return;
-    }
-
-    if (!IsPostBack)
-    {
-        lblEmployeeID.Text = Session["UserLoggedIn"].ToString();
-
-        // Display the Department captured during Login
-        if (Session["UserDepartment"] != null && !string.IsNullOrEmpty(Session["UserDepartment"].ToString()))
+        protected void Page_Load(object sender, EventArgs e)
         {
-            lblDepartment.Text = Session["UserDepartment"].ToString().ToUpper();
-        }
-        else
-        {
-            // If the session is empty, we force a check based on admin names
-            string user = lblEmployeeID.Text.ToLower();
-            if (user == "admin" || user == "admin1") lblDepartment.Text = "IT DEPARTMENT";
-            else if (user == "admin2") lblDepartment.Text = "HR DEPARTMENT";
-            else lblDepartment.Text = "GENERAL";
+            if (Session["UserLoggedIn"] == null)
+            {
+                Response.Redirect("Login.aspx");
+                return;
+            }
+
+            if (!IsPostBack)
+            {
+                lblEmployeeID.Text = Session["UserLoggedIn"].ToString();
+
+                if (Session["UserDepartment"] != null && !string.IsNullOrEmpty(Session["UserDepartment"].ToString()))
+                {
+                    lblDepartment.Text = Session["UserDepartment"].ToString().ToUpper();
+                }
+                else
+                {
+                    string user = lblEmployeeID.Text.ToLower();
+                    if (user == "admin" || user == "admin1") lblDepartment.Text = "IT DEPARTMENT";
+                    else if (user == "admin2") lblDepartment.Text = "HR DEPARTMENT";
+                    else lblDepartment.Text = "GENERAL";
+                }
+
+                BindGrid();
+            }
         }
 
-        BindGrid();
-    }
-}
         private void BindGrid()
         {
             using (OracleConnection conn = new OracleConnection(connString))
@@ -64,7 +63,6 @@ namespace WebApplication4
                     countCmd.Parameters.Add(new OracleParameter("p_tid", dbSearchID));
                     int totalRecords = Convert.ToInt32(countCmd.ExecuteScalar());
 
-                    // ORDER BY SR_NO DESC ensures recent orders appear first
                     string dataSql = @"SELECT * FROM (
                                         SELECT a.*, ROWNUM rnum FROM (
                                             SELECT * FROM FO_FOOD_ORDERS 
@@ -85,7 +83,6 @@ namespace WebApplication4
                     rptOrders.DataSource = dt;
                     rptOrders.DataBind();
 
-                    // Pagination Control
                     bool showPagination = totalRecords > 10;
                     btnPrev.Visible = showPagination;
                     btnNext.Visible = showPagination;
@@ -97,9 +94,6 @@ namespace WebApplication4
                         btnPrev.Enabled = (PageIndex > 0);
                         btnNext.Enabled = ((PageIndex + 1) * 10) < totalRecords;
                     }
-
-                    lblStatusMessage.Visible = (dt.Rows.Count == 0);
-                    if (dt.Rows.Count == 0) lblStatusMessage.Text = "No records found for ID: " + dbSearchID;
                 }
                 catch (Exception ex)
                 {
@@ -120,6 +114,7 @@ namespace WebApplication4
 
         private void UpdateStatus(string status)
         {
+            lblStatusMessage.Visible = false;
             bool anySelected = false;
             bool success = false;
 
@@ -168,21 +163,30 @@ namespace WebApplication4
             }
             else if (success)
             {
-                ShowAlert("Order updated successfully!");
+                // Trigger Swiggy-style modal instead of standard label
+                litModalMessage.Text = "The selected orders have been marked as <b>" + status + "</b> successfully.";
+                pnlSuccessModal.Visible = true;
                 BindGrid();
             }
         }
 
         private void ShowAlert(string msg)
         {
-            string script = $"alert('{msg.Replace("'", "\\'")}');";
-            ScriptManager.RegisterStartupScript(this, GetType(), "UserAlert", script, true);
+            lblStatusMessage.Text = msg;
+            lblStatusMessage.Visible = true;
+            lblStatusMessage.ForeColor = msg.ToLower().Contains("success") ? System.Drawing.Color.Green : System.Drawing.Color.Red;
+        }
+
+        protected void btnCloseModal_Click(object sender, EventArgs e)
+        {
+            pnlSuccessModal.Visible = false;
         }
 
         protected void Pager_Click(object sender, EventArgs e)
         {
             string direction = ((Button)sender).CommandArgument;
             if (direction == "Next") PageIndex++; else PageIndex--;
+            lblStatusMessage.Visible = false;
             BindGrid();
         }
 

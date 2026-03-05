@@ -30,9 +30,14 @@ namespace WebApplication4
             GenerateCaptcha();
         }
 
+        protected void btnCloseModal_Click(object sender, EventArgs e)
+        {
+            pnlModal.Visible = false;
+        }
+
         protected void btnLogin_Click(object sender, EventArgs e)
         {
-            // 1️⃣ Validate Captcha
+            // 1. Captcha Check
             if (Session["CaptchaCode"] == null || txtCaptchaInput.Text.Trim() != Session["CaptchaCode"].ToString())
             {
                 ShowAlert("Captcha Invalid!");
@@ -42,10 +47,10 @@ namespace WebApplication4
 
             string username = txtEmployeeID.Text.Trim();
             string password = txtPassword1.Text;
+            bool isAuthenticated = false;
             string strError = string.Empty;
 
-            // 2️⃣ Step 1: Check Hardcoded Credentials (Quick bypass for testing)
-            bool isAuthenticated = false;
+            // 2. Hardcoded Check
             string userLower = username.ToLower();
             if ((userLower == "admin" && password == "50000") ||
                 (userLower == "admin1" && password == "40000") ||
@@ -55,7 +60,7 @@ namespace WebApplication4
                 isAuthenticated = true;
             }
 
-            // 3️⃣ Step 2: If not hardcoded, try Active Directory
+            // 3. AD Check
             if (!isAuthenticated)
             {
                 try
@@ -64,25 +69,26 @@ namespace WebApplication4
                     string adPath = ConfigurationManager.AppSettings["DirectoryPath"];
                     if (!string.IsNullOrEmpty(adPath))
                     {
-                         isAuthenticated = AuthenticateUser(domainName, username, password, adPath, out strError);
+                        isAuthenticated = AuthenticateUser(domainName, username, password, adPath, out strError);
                     }
                 }
-                catch { /* AD error, fallback to DB */ }
+                catch { /* AD Silently fails to allow DB fallback */ }
             }
 
-            // 4️⃣ Step 3: If still not authenticated, try Oracle Database (FNS_USER_ACCESS)
+            // 4. DB Check
             if (!isAuthenticated)
             {
                 isAuthenticated = CheckDatabaseLogin(username, password);
             }
 
-            // 5️⃣ Final Result
+            // 5. Evaluation
             if (isAuthenticated)
             {
                 ExecuteUserRoleLogic(username);
             }
             else
             {
+                // Shows dialogue for wrong Username or Password
                 ShowAlert("Invalid Credentials! Please check your Username and Password.");
                 GenerateCaptcha();
             }
@@ -90,21 +96,34 @@ namespace WebApplication4
 
         private bool CheckDatabaseLogin(string username, string password)
         {
-            string connString = ConfigurationManager.ConnectionStrings["connectionStringEMD"].ConnectionString;
-            using (OracleConnection conn = new OracleConnection(connString))
+            try
             {
-                try
+                // Check if the connection string entry exists in web.config
+                var connSettings = ConfigurationManager.ConnectionStrings["connectionStringTrainee"];
+                if (connSettings == null)
+                {
+                    // Log this internally if needed: "Connection string 'connectionStringEMD' is missing."
+                    return false;
+                }
+
+                string connString = connSettings.ConnectionString;
+                using (OracleConnection conn = new OracleConnection(connString))
                 {
                     conn.Open();
-                    // We check against the table you mentioned earlier
                     string sql = "SELECT COUNT(*) FROM FNS_USER_ACCESS WHERE USERNAME = :u AND PASSWORD = :p";
-                    OracleCommand cmd = new OracleCommand(sql, conn);
-                    cmd.Parameters.Add(new OracleParameter("u", username));
-                    cmd.Parameters.Add(new OracleParameter("p", password));
-                    int count = Convert.ToInt32(cmd.ExecuteScalar());
-                    return count > 0;
+                    using (OracleCommand cmd = new OracleCommand(sql, conn))
+                    {
+                        cmd.Parameters.Add(new OracleParameter("u", username));
+                        cmd.Parameters.Add(new OracleParameter("p", password));
+                        int count = Convert.ToInt32(cmd.ExecuteScalar());
+                        return count > 0;
+                    }
                 }
-                catch { return false; }
+            }
+            catch (Exception)
+            {
+                // If database is down or table doesn't exist, we return false to trigger the "Invalid Credentials" popup
+                return false;
             }
         }
 
@@ -120,8 +139,6 @@ namespace WebApplication4
                     using (DirectorySearcher search = new DirectorySearcher(entry))
                     {
                         search.Filter = $"(SAMAccountName={username})";
-
-                        // We load multiple possible attributes where Department/OU might be stored
                         search.PropertiesToLoad.Add("department");
                         search.PropertiesToLoad.Add("distinguishedName");
                         search.PropertiesToLoad.Add("physicalDeliveryOfficeName");
@@ -130,30 +147,18 @@ namespace WebApplication4
                         if (result != null)
                         {
                             string foundDept = "GENERAL";
-
-                            // Priority 1: The Standard Department Field
                             if (result.Properties.Contains("department"))
-                            {
                                 foundDept = result.Properties["department"][0].ToString();
-                            }
-                            // Priority 2: The Office Name Field
                             else if (result.Properties.Contains("physicalDeliveryOfficeName"))
-                            {
                                 foundDept = result.Properties["physicalDeliveryOfficeName"][0].ToString();
-                            }
-                            // Priority 3: Extracting the OU from the Distinguished Name
                             else if (result.Properties.Contains("distinguishedName"))
                             {
                                 string dn = result.Properties["distinguishedName"][0].ToString();
-                                // This parses "CN=User,OU=IT_Dept,DC=corp" to get "IT_Dept"
                                 int start = dn.IndexOf("OU=") + 3;
                                 int end = dn.IndexOf(",", start);
                                 if (start > 2 && end > start)
-                                {
                                     foundDept = dn.Substring(start, end - start);
-                                }
                             }
-
                             Session["UserDepartment"] = foundDept;
                             return true;
                         }
@@ -167,23 +172,29 @@ namespace WebApplication4
                 return false;
             }
         }
+
         private void ExecuteUserRoleLogic(string username)
         {
-            string connString = ConfigurationManager.ConnectionStrings["connectionStringTrainee"].ConnectionString;
-            using (OracleConnection connection = new OracleConnection(connString))
+            try
             {
-                try
+                var connSettings = ConfigurationManager.ConnectionStrings["connectionStringTrainee"];
+                if (connSettings == null)
+                {
+                    ShowAlert("Configuration Error: Connection string 'connectionStringTrainee' not found.");
+                    return;
+                }
+
+                using (OracleConnection connection = new OracleConnection(connSettings.ConnectionString))
                 {
                     connection.Open();
                     string query = "SELECT ROLE FROM FO_USER_ROLES WHERE USERNAME = :uName";
-                
                     OracleCommand command = new OracleCommand(query, connection);
                     command.Parameters.Add(new OracleParameter("uName", username));
 
                     object result = command.ExecuteScalar();
                     string role = (result != null) ? result.ToString() : "Employee";
 
-                    // Update or Insert logic for tracking logins
+                    // Update or Insert logic
                     if (result != null)
                     {
                         string update = "UPDATE FO_USER_ROLES SET LAST_LOGIN_DATE = SYSDATE WHERE USERNAME = :uName";
@@ -203,23 +214,23 @@ namespace WebApplication4
                     Session["UserLoggedIn"] = username;
                     Session["Role"] = role;
 
-                    // Redirect logic
                     if (role == "GuestHouseAdmin")
                         Response.Redirect("FoodOrderRecords.aspx", false);
                     else
                         Response.Redirect("Emp_Dashboard.aspx", false);
                 }
-                catch (Exception ex)
-                {
-                    ShowAlert("Login Success, but Role Error: " + ex.Message);
-                }
+            }
+            catch (Exception ex)
+            {
+                // Instead of crashing the page, show the error in your custom dialogue box
+                ShowAlert("Login successful, but role assignment failed: " + ex.Message);
             }
         }
 
         private void ShowAlert(string msg)
         {
-            string script = $"alert('{msg}');";
-            ScriptManager.RegisterStartupScript(this, GetType(), "UserAlert", script, true);
+            lblModalMessage.Text = msg;
+            pnlModal.Visible = true;
         }
     }
 }

@@ -26,10 +26,37 @@
         .footer-accent { width: 100%; height: 40px; background: #1AA63A; position: fixed; bottom: 0; display: flex; justify-content: center; align-items: center; color: white; font-size: 0.8rem; }
         .remark-box { width: 95%; min-width: 200px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; color: #333; }
         .remark-box:focus { border-color: #1AA63A; outline: none; box-shadow: 0 0 5px rgba(26, 166, 58, 0.3); }
+
+        /* SWIGGY STYLE MODAL CSS */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 2000;
+        }
+        .modal-box {
+            background: white; padding: 40px; border-radius: 12px; text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-width: 400px; width: 90%;
+            border-top: 8px solid #1AA63A;
+        }
+        .modal-box h2 { color: #1AA63A; margin-bottom: 15px; font-size: 24px; }
+        .modal-box p { color: #555; margin-bottom: 25px; line-height: 1.5; font-size: 16px; }
+        .btn-modal-close {
+            background-color: #1AA63A; color: white; padding: 12px 35px;
+            border: none; border-radius: 6px; font-weight: bold; cursor: pointer; text-transform: uppercase;
+        }
     </style>
 </head>
 <body>
     <form id="form1" runat="server">
+        
+        <asp:Panel ID="pnlSuccessModal" runat="server" Visible="false" CssClass="modal-overlay">
+            <div class="modal-box">
+                <div style="font-size: 50px; color: #1AA63A; margin-bottom: 10px;">✔</div>
+                <h2>Update Successful</h2>
+                <p><asp:Literal ID="litModalMessage" runat="server"></asp:Literal></p>
+                <asp:Button ID="btnCloseModal" runat="server" Text="CONTINUE" CssClass="btn-modal-close" OnClick="btnCloseModal_Click" />
+            </div>
+        </asp:Panel>
+
         <div class="header-accent"></div>
         <div class="logo-wrapper"><img src="Images/logo.png" alt="RCF Logo"/></div>
         <div class="nav-bar">
@@ -37,7 +64,8 @@
         </div>
         <div class="container">
             <h1>YOUR ORDERS</h1>
-            <asp:Label ID="lblStatusMessage" runat="server" CssClass="status-msg" Visible="false"></asp:Label>
+           <asp:Label ID="lblStatusMessage" runat="server" Visible="false" Font-Bold="true" CssClass="status-msg"></asp:Label>
+            
             <div class="info-section">
                 <div class="info-group">
                     <div class="info-label">Username</div>
@@ -52,6 +80,7 @@
                     <asp:Button ID="btnReject" runat="server" Text="REJECT" OnClick="btnReject_Click" style="background:#dc3545; color:white; padding:12px 35px; border:none; border-radius:5px; cursor:pointer; margin-left:15px;" />
                 </div>
             </div>
+            
             <div class="table-wrapper">
                 <table>
                     <thead>
@@ -79,6 +108,7 @@
                     </tbody>
                 </table>
             </div>
+            
             <div class="pager-row">
                 <asp:Button ID="btnPrev" runat="server" Text="Previous" OnClick="Pager_Click" CommandArgument="Prev" CssClass="btn-pager" />
                 <asp:Label ID="lblPageNumber" runat="server" style="font-weight:bold;"></asp:Label>
