@@ -17,7 +17,9 @@ The application follows a three-tier architecture for maintainability and separa
 3.Data Layer – Oracle Database manages all data storage, retrieval, and integrity.
 
 Technologies Used
+
 1.ASP.NET Web Forms – Frontend interface development
+
 2.C# – Backend logic and business layer
 3.Oracle Database – Data storage and management
 4.HTML & CSS – Web interface design
